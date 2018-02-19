@@ -1,0 +1,47 @@
+---
+title: "Introduction to GIS in R"
+author: "Samuel Bosch and Jorge Assis"
+date: "2/19/2018"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+# Outline
+
+Goal: give an overview of the most important packages to support you with preparing and exploring data for SDM and for presenting your results
+
+- Importing data
+  - Text delimited: readr
+  - Excel: openxlsx
+  - Zipfile
+  - Shapefile
+  - Raster: raster
+- Getting data
+  - Environmental: sdmpredictors
+  - Occurrences: robis, rgbif
+  - Other: mregions
+- Manipulating data
+  - Combine
+    - Extract data from raster
+    - Overlap with polygons e.g. EEZ/MPA using sf
+  - Filtering, grouping, ...: dplyr
+  - Spatial thinning: spThin
+  - Create coastline raster
+- Plotting
+  - ggplot
+    - Boxplots
+    - Histogram/density plot
+    - SST vs Salinity with OBIS outliers
+    - Simple map
+  - Correlation between rasters
+  - Leaflet
+    - Points + World + mregions + SST
+
+# Exercises
+Plot surface and benthic temperature against depth for a given region of the world
+Produce pairs plot to address the correlation between variables
+Add data from OBIS (R script) for a given species and clip point data with certain criteria (<= 50m depth & ! Land)
+
