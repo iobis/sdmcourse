@@ -267,7 +267,7 @@ environment <- sdmpredictors::load_layers(c('BO2_tempmean_ss', 'BO_bathymean'),
 abra <- robis::occurrence("Abra alba", year=2000,
                           fields = c('id', 'decimalLongitude', 'decimalLatitude', 'qc', 'depth'))
 
-extract(environment, abra[,c('decimalLongitude', 'decimalLatitude')])
+extract(environment, abra[,c('decimalLongitude', 'decimalLatitude'),drop=FALSE])
 ```
 
 ## Overlap with polygons
@@ -298,7 +298,7 @@ library(spThin)
 abra_thin <- spThin(abra, x.col = 'decimalLongitude', y.col = 'decimalLatitude',
                     dist = 10, great.circle.distance = TRUE)
 NROW(abra)
-NROW(abra[abra_thin@samples[[1]],])
+NROW(abra[abra_thin@samples[[1]],,drop=FALSE])
 ```
 
 ## Create coastline raster
@@ -330,7 +330,7 @@ envabra <- extract(environment, abra[,c('decimalLongitude', 'decimalLatitude')])
 data <- cbind(abra, envabra) %>% 
   mutate(ObservationDepth = -1*depth, Bathymetry = BO_bathymean) %>%
   select(ObservationDepth, Bathymetry)
-data <- data[complete.cases(data),]
+data <- data[complete.cases(data),,drop=FALSE]
 data_long <- tidyr::gather(data)
 ```
 
