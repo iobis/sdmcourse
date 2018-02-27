@@ -1,0 +1,16 @@
+base
+readr
+openxlsx
+sf
+sp
+raster
+rgdal
+sdmpredictors
+robis
+rgbif
+ggplot2
+spThin
+dplyr
+bindrcpp
+leaflet
+maps

@@ -2,46 +2,547 @@
 title: "Introduction to GIS in R"
 author: "Samuel Bosch and Jorge Assis"
 date: "2/19/2018"
-output: ioslides_presentation
+output:
+  ioslides_presentation:
+    css: slides.css
+    smaller: true
+editor_options: 
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
 ```
 
-# Outline
+```{r install, include=FALSE}
+pkgs <- c('dplyr', 'openxlsx', 'raster', 'readr', 'rgbif',  'robis', 'sdmpredictors', 'sf', 'tidyr')
+for(pkg in pkgs) {
+  if(!requireNamespace(pkg)) {
+    install.packages(pkg, repos = 'https://cloud.r-project.org')
+  }
+}
+```
+
+```{r demodata, include=FALSE}
+if(!file.exists('data/Abra_alba_2000.csv')) {
+  abra <- robis::occurrence("Abra alba", year=2000)
+  readr::write_csv(abra, 'data/Abra_alba_2000.csv')
+  readr::write_delim(abra, 'data/Abra_alba_2000.txt', delim = '\t')
+  openxlsx::write.xlsx(abra, 'data/Abra_alba_2000.xlsx', sheetName = 'Abra alba', row.names = FALSE)
+}
+```
+
+
+## Outline
 
 Goal: give an overview of the most important packages to support you with preparing and exploring data for SDM and for presenting your results
 
 - Importing data
-  - Text delimited: readr
-  - Excel: openxlsx
-  - Zipfile
-  - Shapefile
-  - Raster: raster
 - Getting data
-  - Environmental: sdmpredictors
-  - Occurrences: robis, rgbif
-  - Other: mregions
 - Manipulating data
-  - Combine
-    - Extract data from raster
-    - Overlap with polygons e.g. EEZ/MPA using sf
-  - Filtering, grouping, ...: dplyr
-  - Spatial thinning: spThin
-  - Create coastline raster
-- Plotting
-  - ggplot
-    - Boxplots
-    - Histogram/density plot
-    - SST vs Salinity with OBIS outliers
-    - Simple map
-  - Correlation between rasters
-  - Leaflet
-    - Points + World + mregions + SST
+- Visualizing data
 
-# Exercises
-Plot surface and benthic temperature against depth for a given region of the world
-Produce pairs plot to address the correlation between variables
-Add data from OBIS (R script) for a given species and clip point data with certain criteria (<= 50m depth & ! Land)
+# Importing data
 
+## Text delimited
+  
+```{r readr, warning=FALSE, message=FALSE, cache=TRUE}
+library(readr)
+
+# comma separated
+abra <- read_csv('data/Abra_alba_2000.csv')
+
+# tab separated
+abra <- read_delim('data/Abra_alba_2000.txt', delim = '\t')
+```
+  
+## Excel: openxlsx
+
+```{r openxlsx, message=FALSE, cache=TRUE}
+# install.packages('openxlsx')
+library(openxlsx)
+
+# First sheet
+abra <- read.xlsx('data/Abra_alba_2000.xlsx', 1)
+
+# Sheet by name
+abra <- read.xlsx('data/Abra_alba_2000.xlsx', sheet = 'Abra alba')
+```
+
+## Zipfile
+
+```{r zip, cache=TRUE}
+# Download a zip file
+temp <- tempfile('nsbs', fileext = '.zip')
+download.file('http://ipt.vliz.be/eurobis/archive.do?r=nsbs&v=1.1', 
+              temp)
+
+# Read occurence.txt file from the zip file
+data <- read_delim(unz(temp, 'occurrence.txt'), delim = '\t')
+``` 
+
+## Shapefile
+
+```{r shp, message=FALSE, warning=FALSE, cache=TRUE}
+library(sf)
+meow <- read_sf('data/MEOW/meow_ecos.shp')
+
+library(raster)
+meow <- shapefile('data/MEOW/meow_ecos.shp')
+```
+
+## Raster
+
+```{r raster, cache=TRUE}
+library(raster)
+
+sst <- raster('data/BO2_tempmean_ss_lonlat.tif')
+sst
+```
+
+# Getting data
+
+## Environmental
+
+```{r environmental, message=FALSE, warning=FALSE, cache=TRUE}
+library(sdmpredictors)
+
+# exploring the marine datasets
+datasets <- list_datasets(terrestrial = FALSE, marine = TRUE)
+View(datasets)
+
+# exploring the layers
+layers <- list_layers(datasets)
+View(layers)
+
+# download specific layers to the data directory
+environment <- load_layers(c('BO2_tempmean_ss', 'BO_bathymean'), 
+                           datadir = 'data')
+```
+
+## Occurrences: OBIS
+
+```{r robis, message=FALSE, cache=TRUE}
+library(robis)
+ptevol <- occurrence('Pterois volitans') # red lionfish
+colnames(ptevol)
+```
+
+## Filter by year
+
+```{r robis_year, cache=TRUE}
+occurrence('Pterois volitans', year = 1991, 
+           fields = c('id', 'decimalLongitude', 'decimalLatitude', 'year'))
+```
+
+## Filter by date
+
+```{r robis_data, cache=TRUE}
+occurrence('Pterois volitans', startdate = '1980-03-01', enddate = '1980-10-30', 
+           fields = c('id', 'decimalLongitude', 'decimalLatitude', 'eventDate'))
+```
+
+## Filter by depth
+
+```{r robis_depth, cache=TRUE}
+occurrence('Pterois volitans', startdepth = 100, enddepth = 200,
+           fields = c('id', 'decimalLongitude', 'decimalLatitude', 'depth'))
+```
+
+## Filter by polygon
+
+With <http://iobis.org/maptool>) we can create a WKT for the Perhentian and Redang Islands and use this to query all occurrences.
+
+```{r robis_geom, cache=TRUE}
+islands <- occurrence(geometry = 
+      paste('POLYGON ((102.68921 6.05862','102.57111 5.95346',
+                      '103.07785 5.49980','103.25226 5.62555',
+                      '103.07648 5.87970','102.68921 6.05862))',sep=', '))
+```
+
+## Filter by dataset
+
+```{r robis_dataset, cache=TRUE}
+datasets <- dataset(q='Adriatic-INTERREG')
+datasets$name
+```
+
+## Filter by dataset
+
+```{r robis_dataset2, cache=TRUE}
+occ <- occurrence(resourceid = datasets$id, year = 1998,
+           fields = c('id', 'decimalLongitude', 'decimalLatitude', 'resourceID'))
+head(occ)
+```
+
+## Filter by quality control
+
+Vandepitte L., Bosch S., Tyberghein L., Waumans F., Vanhoorne B., Hernandez F., De Clerck O., & Mees J. (2015) **Fishing for data and sorting the catch: assessing the data quality, completeness and fitness for use of data in marine biogeographic databases**. Database, 2015. <http://dx.doi.org/10.1093/database/bau125>
+
+```{r helpqc, eval=FALSE}
+?qcflags
+```
+
+Categories of quality control flags:
+
+- Data format
+- Taxonomy
+- Completeness
+- Geography
+- Depth
+- Outliers
+
+## Some filters: quality control
+
+- 3\. Taxonomy: is the taxon level genus or lower?
+- 4\. Geography (lat/lon): are the latitude/longitude values different from zero?
+- 5\. Geography (lat/lon): are the latitude/longitude values within their possible boundaries? (world coordinates)
+- 7\. Completeness (date/time): is the sampling year (start/end) completed and valid?
+
+```{r robis_qc, cache=TRUE}
+qc3457 <- occurrence(resourceid = datasets$id, qc = c(3,4,5,7), year = 1998)
+```
+
+## Occurrences: GBIF
+
+```{r rgbif, cache=TRUE, warning=FALSE}
+library(rgbif)
+
+occ_search(scientificName = 'Pterois volitans', limit = 10)
+```
+
+# Manipulating data
+
+## Filtering
+
+```{r dplyr_filter, eval=FALSE}
+library(dplyr)
+
+data <- occurrence('Sargassum')
+data %>% filter(scientificName == 'Sargassum muticum' & yearcollected > 2005)
+```
+
+## Reordering
+
+```{r dplyr_arrange, eval=FALSE}
+data %>% arrange(datasetName, desc(eventDate)) %>% print(n=10)
+```
+
+## Selecting and renaming columns
+
+```{r dplyr_select, eval=FALSE}
+data %>% select(scientificName, eventDate, lon=decimalLongitude, lat=decimalLatitude) %>% print(n=10)
+```
+
+## Unique combinations
+
+select() can be used with distinct() to find unique combinations of values:
+
+```{r dplyr_distinct, eval=FALSE}
+data %>% select(scientificName, locality) %>% distinct()
+```
+
+## Adding columns
+
+```{r dplyr_addcol, eval=FALSE}
+data %>% tbl_df %>% mutate(zone = .bincode(minimumDepthInMeters, breaks=c(0, 20, 100))) %>% 
+  select(minimumDepthInMeters, zone) %>% 
+  filter(!is.na(zone)) %>% 
+  print(n = 10)
+```
+
+## Aggregation
+
+```{r dplyr_summarise, eval=FALSE}
+data %>% summarise(lat_mean = mean(decimalLatitude), lat_sd = sd(decimalLatitude))
+data %>% group_by(scientificName) %>% summarise(records=n(), datasets=n_distinct(datasetName))
+```
+
+## Extract data from raster
+
+```{r raster_extract, cache=TRUE, message=FALSE}
+library(raster)
+environment <- sdmpredictors::load_layers(c('BO2_tempmean_ss', 'BO_bathymean'), 
+                                          datadir = 'data')
+abra <- robis::occurrence("Abra alba", year=2000,
+                          fields = c('id', 'decimalLongitude', 'decimalLatitude', 'qc', 'depth'))
+
+extract(environment, abra[,c('decimalLongitude', 'decimalLatitude')])
+```
+
+## Overlap with polygons
+
+```{r sf_intersection, cache=TRUE}
+library(sf)
+abra_points <- st_as_sf(abra, coords = c('decimalLongitude', 'decimalLatitude'), crs = 4326)
+meow <- read_sf('data/MEOW/meow_ecos.shp')
+
+abra_meow <- st_intersection(abra_points, meow)
+colnames(abra_meow)
+```
+
+## Spatial thinning
+
+```{r, eval=FALSE}
+if (!require('devtools')) {
+	install.packages('devtools', repo='http://cran.rstudio.com', dep=TRUE)
+}
+devtools:::install_github('mlammens/spThin')
+```
+
+## Spatial thinning
+
+```{r spthin, cache=TRUE, message=FALSE}
+library(spThin)
+
+abra_thin <- spThin(abra, x.col = 'decimalLongitude', y.col = 'decimalLatitude',
+                    dist = 10, great.circle.distance = TRUE)
+NROW(abra)
+NROW(abra[abra_thin@samples[[1]],])
+```
+
+## Create coastline raster
+
+```{r coastmask, cache=TRUE}
+coast_mask <- function(layer) {
+  edges <- raster::boundaries(layer, type="inner")
+  values <- getValues(edges)
+  is.na(values) | values == 0
+}
+l <- raster('data/BO2_tempmean_ss_lonlat.tif')
+mask <- coast_mask(l)
+l[mask] <- NA
+```
+
+# Visualizing data
+
+## ggplot2
+
+<http://ggplot2.tidyverse.org/reference/>
+
+All ggplot2 plots with a call to `ggplot()`, supplying default data and aesthethic mappings, specified by `aes()`. You then add layers, scales, coords and facets with `+`. To save a plot to disk, use `ggsave()`.
+
+## Preparing data
+
+```{r abraplotprep, cache=TRUE}
+library(dplyr)
+envabra <- extract(environment, abra[,c('decimalLongitude', 'decimalLatitude')])
+data <- cbind(abra, envabra) %>% 
+  mutate(ObservationDepth = -1*depth, Bathymetry = BO_bathymean) %>%
+  select(ObservationDepth, Bathymetry)
+data <- data[complete.cases(data),]
+data_long <- tidyr::gather(data)
+```
+
+## Points
+
+```{r abrapoints, cache=TRUE}
+library(ggplot2)
+ggplot(data, aes(x=Bathymetry, y=ObservationDepth)) +
+  geom_point()
+```
+
+## Boxplots
+
+```{r abrabox, cache=TRUE}
+ggplot(data_long, aes(x=key, y=value)) + 
+  geom_boxplot()
+```
+
+## Histogram
+
+```{r abrahist, cache=TRUE}
+ggplot(data_long, aes(x=value)) +
+  geom_histogram(binwidth = 5, alpha = 0.5) +
+  facet_grid(key ~ .)
+```
+
+## Frequency polygons
+
+```{r abrafreqpoly, cache=TRUE}
+ggplot(data_long, aes(x=value, colour=key)) +
+  geom_freqpoly(binwidth = 5)
+```
+
+## Density
+
+```{r abradensity, cache=TRUE}
+ggplot(data_long, aes(x=value, fill=key, colour=key)) +
+  geom_density(alpha=0.5)
+```
+
+## Correlation between rasters
+
+```{r rastercor, cache=TRUE}
+library(sdmpredictors)
+layers <- list_layers('Bio-ORACLE', version = 2)
+meanss <- layers %>% filter(is_surface & grepl('mean[_]', layer_code)) %>% select(layer_code)
+corr <- layers_correlation(meanss)
+plot_correlation(corr)
+```
+
+## Visualize QC
+
+- 28\. Species outliers (geography): is the observation within three IQRs from the first & third quartile distance to the geographic centroid of this taxon?
+
+```{r getacistu, cache=TRUE}
+acistu <- occurrence("Acipenser sturio") # European sea sturgeon
+
+acistu$qcnum <- qcflags(acistu$qc, c(28))
+colors <- c("#ee3300", "#86b300")[acistu$qcnum + 1]
+popup <- paste0(acistu$datasetName, "<br/>", acistu$catalogNumber, 
+                "<br/><a href=\"http://www.iobis.org/explore/#/dataset/", 
+                acistu$resourceID, "\">OBIS dataset page</a>")
+```
+
+## Visualize QC
+
+```{r acistuleafletqc, cache=TRUE, message = FALSE}
+library(leaflet)
+leaflet() %>% addProviderTiles("CartoDB.Positron") %>%
+  addCircleMarkers(
+    popup = popup, radius = 3.5, weight = 0, fillColor = colors, fillOpacity = 1,
+    lat = acistu$decimalLatitude, lng = acistu$decimalLongitude)
+```
+
+## Visualize QC
+
+```{r acistuggplotqc, cache=TRUE}
+acistu$qctxt <- c("Not ok", "Ok")[acistu$qcnum + 1]
+ggplot() +
+  geom_polygon(data=map_data("world"),aes(x=long,y=lat,group=group),fill="#dddddd")+
+  geom_point(data=acistu, aes(x=decimalLongitude, y=decimalLatitude, color=qctxt))
+```
+
+## Visualize environmental data
+
+```{r acistuenvplot, cache=TRUE}
+# devtools::install_github('iobis/obistools')
+env <- obistools::lookup_xy(acistu)
+envacistu <- cbind(acistu[complete.cases(env),], env[complete.cases(env),])
+ggplot(envacistu, aes(x=sssalinity, y=sstemperature, color=qctxt)) +
+  geom_point()
+```
+
+## World + SST + MEOW + Abra alba
+
+```{r mapdemo, cache=TRUE}
+meow <- read_sf('data/MEOW/meow_ecos.shp')
+sst <- raster('data/BO2_tempmean_ss_lonlat.tif')
+extent <- extent(-87, 25, 24, 70)
+sst <- raster::crop(sst, extent)
+sst_df <- as.data.frame(as(sst, "SpatialPixelsDataFrame"))
+colnames(sst_df) <- c("value", "x", "y")
+map <- ggplot() +
+  geom_tile(data=sst_df, aes(x=x, y=y, fill=value), alpha=0.8) +
+  geom_sf(data=meow, fill="darkgreen", alpha=0.1) +
+  geom_polygon(data=map_data("world"),aes(x=long,y=lat,group=group),fill="#dddddd") +
+  geom_point(data=abra, aes(x=decimalLongitude, y=decimalLatitude)) +
+  coord_sf(xlim = c(extent@xmin+10, extent@xmax-10), 
+           ylim = c(extent@ymin+10, extent@ymax-10)) +
+  scale_fill_distiller(palette = "Spectral") +
+  labs(x="longitude", y="latitude", fill = "SST")
+```
+
+## World + SST + MEOW + Abra alba
+
+```{r plotmapdemo, cache=TRUE, echo=FALSE}
+map
+```
+
+## Exercises
+
+- Plot thinned records and original records for e.g. Abra alba, zoom in on the European distribution
+- Plot surface and benthic temperature against depth for Europe
+
+## Overlap with polygons e.g. EEZ/MPA using sf and mregions
+    
+```{r mregion_advanced, eval=FALSE}
+get_features <- function(mrid) {
+  wmsinfo <- httr::content(httr::GET(paste0("http://www.marineregions.org/rest/getGazetteerWMSes.json/", mrid, "/")))
+  if(length(wmsinfo) == 0) {
+    print(paste(mrid, "No wms found", wmsinfo))
+    return(list())
+  }
+  features <- list()
+  for(wms in wmsinfo) {
+    if(!grepl("wms[?]$", wms$url) && !grepl("/arcgis/services/", wms$url)) {
+      print(paste(mrid, "Url is no WMS", wms$url))
+    } else {
+      if(grepl("gis[.]ngdc[.]noaa[.]gov", wms$url)) {
+        wfs_url <- sub("/arcgis/services/", "/arcgis/rest/services/web_mercator/", wms$url)
+        wfs_url <- sub("/MapServer/WmsServer[?]$", "/MapServer/3/query?f=geojson&where=", wfs_url)
+        wfs_url <- paste0(wfs_url, wms$featureName,'%3D', wms$value)
+      } else if(grepl("geoportal[.]gc[.]ca", wms$url)) {
+        wfs_url <- sub("/arcgis/services/", "/arcgis/rest/services/", wms$url)
+        wfs_url <- sub("/MapServer/WMSServer[?]$", "/MapServer/0/query?f=geojson&where=", wfs_url)
+        wfs_url <- paste0(wfs_url, wms$featureName," = '", wms$value, "'")
+      } else {
+        wfs_url <- paste0(sub("wms[?]$", "wfs?", wms$url), "request=getfeature&version=1.1.0&service=wfs",
+                          "&typename=", wms$namespace, ':', wms$featureType, 
+                          '&CQL_FILTER=', tolower(wms$featureName), "='", wms$value, "'",
+                          "&outputFormat=application/json")
+      }
+      wfs_url <- URLencode(wfs_url)
+      tryCatch({
+          ft <- sf::read_sf(wfs_url)
+          if(nrow(ft) == 0) {
+            print(paste(mrid, "No feature found", wfs_url))
+          } else if(is.na(sf::st_crs(ft)$epsg)) {
+            print(paste(mrid, "CRS is NA", wfs_url))
+            # sf::st_crs(ft) <- 4326
+          } else if(sf::st_crs(ft)$epsg != 4326) {
+            print(paste(mrid, "CRS is not 4326", wfs_url))
+            ft <- sf::st_transform(ft, 4326)
+            features[[length(features)+1]] <- ft
+          } else if(sf::st_bbox(ft)[1] < -180 || sf::st_bbox(ft)[2] < -90 ||
+                    sf::st_bbox(ft)[3] > 180 || sf::st_bbox(ft)[4] > 90) {
+            print(paste(mrid, "Geom BBOX out of bounds", wfs_url))
+          } else {
+            features[[length(features)+1]] <- ft
+          }
+        },
+        error = function(e) print(paste(mrid, "WFS call failed", wfs_url, e))
+      )
+    }
+  }
+  features <- do.call(rbind, features)
+  features
+}
+
+if(!requireNamespace('sf')) {
+  install.packages('sf')
+}
+if(!requireNamespace('httr')) {
+  install.packages('httr')
+}
+if(!requireNamespace('robis')) {
+  install.packages('robis')
+}
+if(!requireNamespace('leaflet')) {
+  install.packages('leaflet')
+}
+
+simplify_canadian_features <- function(ft, dTolerance = 50) {
+  ft <- sf::st_transform(ft, 3347) # http://spatialreference.org/ref/epsg/nad83-statistics-canada-lambert/
+  ft <- sf::st_simplify(ft, dTolerance)
+  return(sf::st_transform(ft, 4326))
+}
+
+# Strait of Georgia bioregion
+strait_of_georgia_geom <- get_features(mrid = 50171) # http://marineregions.org/gazetteer.php?p=details&id=50171
+simple <- simplify_canadian_features(strait_of_georgia_geom, 50) # simplify with a tolerance of 50 meters
+# All OBIS species records in the Strait of Georgia since 2010
+strait_of_georgia_records <- robis::occurrence(geometry = sf::st_as_text(sf::st_geometry(simple)), startdate = '2010-01-01')
+strait_of_georgia_records <- strait_of_georgia_records[!is.na(strait_of_georgia_records$species),]
+
+library(leaflet)
+
+leaflet(strait_of_georgia_geom) %>%
+  addProviderTiles("OpenStreetMap.BlackAndWhite") %>% 
+  addPolygons(color = "#4488BB", weight = 1, smoothFactor = 0.5, opacity = 1.0, fillOpacity = 0.5)  %>%
+  addCircleMarkers(~decimalLongitude, ~decimalLatitude, popup = ~scientificName, data = strait_of_georgia_records,
+                   radius = 3, weight = 1, fillColor = "red", color = "red", opacity = 1, fillOpacity = 0.1)
+
+
+```
