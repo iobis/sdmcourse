@@ -1,7 +1,7 @@
 ---
 title: "Introduction to GIS in R"
 author: "Samuel Bosch and Jorge Assis"
-date: "2/19/2018"
+date: "13/03/2018"
 output:
   ioslides_presentation:
     css: slides.css
