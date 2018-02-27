@@ -376,8 +376,10 @@ ggplot(data_long, aes(x=value, fill=key, colour=key)) +
 ```{r rastercor, cache=TRUE}
 library(sdmpredictors)
 layers <- list_layers('Bio-ORACLE', version = 2)
-meanss <- layers %>% filter(is_surface & grepl('mean[_]', layer_code)) %>% select(layer_code)
-corr <- layers_correlation(meanss)
+meanss <- layers %>% filter(is_surface & grepl('mean[_]', layer_code))
+corr <- layers_correlation(meanss$layer_code)
+corr <- corr[unlist(correlation_groups(corr)), unlist(correlation_groups(corr))]
+corr[corr==1] <- NA
 plot_correlation(corr)
 ```
 

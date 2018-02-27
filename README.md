@@ -1,9 +1,9 @@
 # FEPS/OBIS/OTGA/SEF Training Course: Marine Species Distribution Modeling
 
-Training material for 12 - 16 March 2018, Oostende, Belgium course.
+Training material for the 12 - 16 March 2018, Oostende, Belgium course.
 
 [View on GitHub](https://github.com/iobis/sdmcourse/)  
-[View Website](https://iobis.github.io/sdmcourse/)  
+[View Website](https://iobis.github.io/sdmcourse/)
 
 ## Session 7
 
