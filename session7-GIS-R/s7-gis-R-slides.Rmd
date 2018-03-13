@@ -85,6 +85,9 @@ data <- read_delim(unz(temp, 'occurrence.txt'), delim = '\t')
 
 ## Shapefile
 
+Marine Ecoregions of the World (Spalding et al., 2007)
+<https://www.worldwildlife.org/publications/marine-ecoregions-of-the-world-a-bioregionalization-of-coastal-and-shelf-areas>
+
 ```{r shp, message=FALSE, warning=FALSE, cache=TRUE}
 library(sf)
 meow <- read_sf('data/MEOW/meow_ecos.shp')
