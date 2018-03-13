@@ -471,7 +471,7 @@ map
 
 **Rule 5: Record All Intermediate Results, When Possible in Standardized Formats**  
 
-## Ten Simple Rules for Reproducible Computational Research**
+## Ten Simple Rules for Reproducible Computational Research
 
 **Rule 6: For Analyses That Include Randomness, Note Underlying Random Seeds**  
 
